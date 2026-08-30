@@ -1,0 +1,7 @@
+ollama
+python-dotenv
+pydantic
+kokoro-onnx==0.4.7
+sounddevice
+langchain
+beautifulsoup4
