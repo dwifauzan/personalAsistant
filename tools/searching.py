@@ -4,6 +4,7 @@ import urllib.parse
 import warnings
 
 from bs4 import XMLParsedAsHTMLWarning
+from bs4 import BeautifulSoup
 warnings.filterwarnings("ignore", category=XMLParsedAsHTMLWarning)
 
 from tools.http_client import fetch
@@ -21,7 +22,7 @@ async def _extract_search_results_bing(query: str, max_results: int = 5) -> list
     if not page_html:
         return []
 
-    from bs4 import BeautifulSoup
+
     soup = BeautifulSoup(page_html, "html.parser")
     results = []
     seen_links = set()
@@ -102,26 +103,36 @@ async def _fetch_pages_parallel(results: list[dict], max_chars: int = 5000) -> l
 
 
 async def web_search_handler(query: str, max_results: int = 3) -> str:
+    print(f"[web_search] Searching Bing for: {query}")
     results = await _extract_search_results_bing(query, max_results=max_results * 2)
 
     if not results:
+        print("[web_search] No results found")
         return "No search results found."
 
+    print(f"[web_search] Found {len(results)} results, fetching top {min(max_results, len(results))} pages")
     page_texts = await _fetch_pages_parallel(results[:max_results])
 
     parts = []
     for i, (result, text) in enumerate(zip(results[:max_results], page_texts), 1):
         if text:
+            print(f"[web_search] Source {i}: {result['title'][:50]}...")
             parts.append(
                 f"Source {i}: {result['title']}\n"
                 f"URL: {result['url']}\n"
                 f"Content:\n{text}\n"
             )
 
+    if parts:
+        print(f"[web_search] Successfully retrieved {len(parts)} sources")
+    else:
+        print("[web_search] Could not retrieve any page content")
+
     return "\n---\n".join(parts) if parts else "Could not retrieve page content."
 
 
 async def news_search_handler(query: str, max_results: int = 3) -> str:
+    print(f"[news_search] Searching Google News for: {query}")
     url = "https://news.google.com/rss/search?" + urllib.parse.urlencode({
         "q": query,
         "hl": "en-US",
@@ -131,6 +142,7 @@ async def news_search_handler(query: str, max_results: int = 3) -> str:
 
     feed = await fetch(url)
     if not feed:
+        print("[news_search] Failed to fetch RSS feed")
         return "No news results found."
 
     from bs4 import BeautifulSoup
@@ -181,30 +193,42 @@ async def news_search_handler(query: str, max_results: int = 3) -> str:
             })
 
     if not results:
+        print("[news_search] No news articles found")
         return "No news articles found."
 
+    print(f"[news_search] Found {len(results)} articles, fetching full content")
     page_texts = await _fetch_pages_parallel(results)
 
     parts = []
     for i, (result, text) in enumerate(zip(results, page_texts), 1):
         content = text if text else result.get("snippet", "")
         if content:
+            print(f"[news_search] Article {i}: {result['title'][:50]}...")
             parts.append(
                 f"News {i}: {result['title']}\n"
                 f"URL: {result['url']}\n"
                 f"Content:\n{content}\n"
             )
 
+    if parts:
+        print(f"[news_search] Successfully retrieved {len(parts)} articles")
+    else:
+        print("[news_search] Could not retrieve any article content")
+
     return "\n---\n".join(parts) if parts else "Could not retrieve news content."
 
 
 async def browse_url_handler(url: str, max_chars: int = 5000) -> str:
+    print(f"[browse_url] Fetching: {url}")
     page_html = await fetch(url)
     if not page_html:
+        print(f"[browse_url] Failed to fetch URL")
         return f"Could not fetch URL: {url}"
 
     text = extract_text(page_html, max_chars=max_chars)
     if not text:
+        print(f"[browse_url] No readable content found")
         return f"No readable content found at: {url}"
 
+    print(f"[browse_url] Extracted {len(text)} characters")
     return f"Content from {url}:\n{text}"

@@ -13,16 +13,28 @@ async def fetch(url: str, timeout: Optional[int] = None) -> str:
     ssl_context = ssl.create_default_context(cafile=certifi.where())
     connector = aiohttp.TCPConnector(ssl=ssl_context)
 
+    headers = {
+        "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
+        "Accept-Language": "en-US,en;q=0.5",
+        "Accept-Encoding": "gzip, deflate, br",
+        "Connection": "keep-alive",
+        "Upgrade-Insecure-Requests": "1",
+    }
+
     async with aiohttp.ClientSession(connector=connector) as session:
         for attempt in range(MAX_RETRIES):
             try:
                 async with session.get(
                     url,
                     timeout=aiohttp.ClientTimeout(total=timeout),
-                    headers={
-                        "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 Chrome/120.0 Safari/537.36"
-                    }
+                    headers=headers,
                 ) as response:
+                    if response.status >= 400:
+                        if attempt == MAX_RETRIES - 1:
+                            return ""
+                        await asyncio.sleep(1 + attempt)
+                        continue
                     return await response.text()
             except Exception:
                 if attempt == MAX_RETRIES - 1:
