@@ -1,6 +1,10 @@
 import asyncio
 import html
 import urllib.parse
+import warnings
+
+from bs4 import XMLParsedAsHTMLWarning
+warnings.filterwarnings("ignore", category=XMLParsedAsHTMLWarning)
 
 from tools.http_client import fetch
 from tools.html_utils import extract_text
@@ -150,7 +154,23 @@ async def news_search_handler(query: str, max_results: int = 3) -> str:
             if sibling_text.startswith("http"):
                 link = sibling_text
 
+        if not link:
+            guid_tag = item.find("guid")
+            if guid_tag:
+                guid_text = guid_tag.get_text(strip=True)
+                if guid_text.startswith("http"):
+                    link = guid_text
+                elif guid_text.startswith("CB"):
+                    link = "https://news.google.com/rss/" + guid_text
+
         description_tag = item.find("description")
+
+        if not link and description_tag:
+            desc_soup = BeautifulSoup(str(description_tag), "html.parser")
+            a_tag = desc_soup.find("a")
+            if a_tag and a_tag.get("href"):
+                link = a_tag["href"]
+
         snippet = description_tag.get_text(" ", strip=True) if description_tag else ""
 
         if title:
