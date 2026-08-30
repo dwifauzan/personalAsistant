@@ -6,3 +6,4 @@ sounddevice
 langchain
 beautifulsoup4
 aiohttp
+Brotli

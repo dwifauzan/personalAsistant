@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Replace regex-based search routing with LLM-native tool calling and async parallel page fetching.
+**Goal:** Replace regex-based search routing with LLM-native tool calling and async parallel page fetching. 
 
 **Architecture:** The LLM (llama3.1 via Ollama) receives tool definitions and decides when/how to search. Tool calls are dispatched in parallel via asyncio. No regex for intent detection — the LLM handles routing natively.
 

@@ -2,3 +2,5 @@ __pycache__/
 *.pyc
 venv/
 .superpowers/
+en_US-lessac-medium.onnx
+kokoro-v1.0.onnx
