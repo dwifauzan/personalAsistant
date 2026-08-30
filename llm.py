@@ -1,93 +1,64 @@
-"""
-Modul untuk komunikasi dengan AI model (Ollama).
-
-Fungsi utama:
-- chat(): Mengirim pesan ke AI dan mendapatkan response
-- Otomatis melakukan web search jika AI tidak yakin atau butuh info real-time
-- Menggunakan searching.py untuk mengambil konten web/berita
-"""
-
 import ollama
 
-from config import MODEL_NAME, NUM_PREDICT
-from tools.searching import search_for_context
+from config import MODEL_NAME, NUM_PREDICT, MAX_TOOL_ROUNDS
+from tools.definitions import TOOL_DEFINITIONS
+from tools.executor import execute_tools_parallel
 
-def chat(messages):
-    print("Sending messages to AI model...")
-    """
-    Mengirim pesan ke AI dan mendapatkan response.
-    
-    Args:
-        messages: List of dict dengan format:
-                  [{"role": "user/assistant/system", "content": "pesan"}]
-    
-    Returns:
-        Dict dengan format: {"message": {"content": "response AI"}}
-    
-    Flow:
-        1. Kirim pesan ke AI (Ollama)
-        2. Cek apakah AI butuh informasi tambahan (ragu-ragu, butuh info real-time)
-        3. Jika ya, lakukan web search dan kirim ulang dengan konteks tambahan
-        4. Return response final dari AI
-    """
-    response = ollama.chat(
+
+def chat(messages: list[dict]) -> dict:
+    for round_num in range(MAX_TOOL_ROUNDS):
+        response = ollama.chat(
+            model=MODEL_NAME,
+            messages=messages,
+            tools=TOOL_DEFINITIONS,
+            options={"num_predict": NUM_PREDICT},
+        )
+
+        message = response["message"]
+
+        if not message.get("tool_calls"):
+            return response
+
+        tool_calls = message["tool_calls"]
+        print(f"[Round {round_num + 1}] Executing {len(tool_calls)} tool(s) in parallel...")
+
+        results = _run_tool_calls(tool_calls)
+
+        messages.append(message)
+
+        for tool_call, result in zip(tool_calls, results):
+            messages.append({
+                "role": "tool",
+                "content": result,
+                "name": tool_call["function"]["name"],
+            })
+
+    print(f"[Warning] Max tool rounds ({MAX_TOOL_ROUNDS}) reached, forcing final response")
+
+    final_response = ollama.chat(
         model=MODEL_NAME,
         messages=messages,
         options={"num_predict": NUM_PREDICT},
     )
 
-    content = response["message"]["content"]
-    
-    print("get it, data: ", content)
-    # Ambil pesan terakhir dari user untuk analisis
-    user_content = next(
-        (
-            message["content"]
-            for message in reversed(messages)
-            if message["role"] == "user"
-        ),
-        "",
-    )
+    return final_response
 
-    # Cek apakah perlu mencari informasi tambahan dari web
-    search_text = search_for_context(
-        user_content,
-        content,
-    )
 
-    # Jika tidak perlu search, return response langsung
-    if not search_text:
-        return response
+def _run_tool_calls(tool_calls: list[dict]) -> list[str]:
+    import asyncio
 
-    # Jika perlu search, tambahkan hasil pencarian ke system prompt
-    new_messages = [
-        (
-            {
-                "role": "system",
-                "content": message["content"]
-                + "\n\nYou were given full web page contents below. "
-                  "Read them carefully, summarize the key information, "
-                  "and answer the user based ONLY on what is contained "
-                  "in those pages. If the pages do not contain a specific "
-                  "fact, number, price, date, or event, say clearly that "
-                  "the sources do not provide it. NEVER fill in numbers, "
-                  "prices, names, or dates from your own memory or training "
-                  "data. Cite the source number when possible."
-                + "\n\nWEB PAGE CONTENTS:\n"
-                + search_text,
-            }
-            if message["role"] == "system"
-            else message
-        )
-        for message in messages
+    calls = [
+        {
+            "name": tc["function"]["name"],
+            "arguments": tc["function"].get("arguments", {}),
+        }
+        for tc in tool_calls
     ]
 
-    # Kirim ulang dengan konteks tambahan dari web search
-    return ollama.chat(
-        model=MODEL_NAME,
-        messages=new_messages,
-        options={
-            "num_predict": NUM_PREDICT,
-            "num_ctx": 8192,
-        },
-    )
+    loop = asyncio.new_event_loop()
+    try:
+        results = loop.run_until_complete(execute_tools_parallel(calls))
+    finally:
+        loop.close()
+
+    return results
