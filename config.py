@@ -33,3 +33,9 @@ NUM_PREDICT = 140
 
 # Apakah browser otomatis terbuka saat melakukan pencarian web
 OPEN_BROWSER = True
+
+# Async/Tool settings
+MAX_CONCURRENT_FETCHES = 3
+FETCH_TIMEOUT = 15
+MAX_RETRIES = 2
+MAX_TOOL_ROUNDS = 3
