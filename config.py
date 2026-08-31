@@ -5,14 +5,15 @@ File ini berisi semua pengaturan yang dapat diubah sesuai kebutuhan,
 termasuk model AI, suara TTS, dan perilaku aplikasi.
 """
 
-# Model AI yang digunakan untuk chat (Ollama)
+from pathlib import Path
+
+_PROJECT_ROOT = Path(__file__).parent
+
 MODEL_NAME = "llama3.1:latest"
 
-# Path ke file model Kokoro TTS (ONNX format)
-KOKORO_MODEL_PATH = "/home/fauzan/Dokumen/asistent/kokoro-v1.0.onnx"
+KOKORO_MODEL_PATH = str(_PROJECT_ROOT / "kokoro-v1.0.onnx")
 
-# Path ke file voices Kokoro TTS (berisi semua pilihan suara)
-KOKORO_VOICES_PATH = "/home/fauzan/Dokumen/asistent/voices-v1.0.bin"
+KOKORO_VOICES_PATH = str(_PROJECT_ROOT / "voices-v1.0.bin")
 
 # Bahasa untuk TTS (en-us = English US, id-id = Indonesian)
 KOKORO_LANGUAGE = "en-us"
