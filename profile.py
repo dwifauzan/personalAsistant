@@ -138,6 +138,11 @@ def apply_profile_update(user_request):
         if new_profile.lower().startswith("markdown"):
             new_profile = new_profile.split("\n", 1)[-1].strip()
 
+    new_profile = re.sub(r"#+\s+", "", new_profile)
+    new_profile = re.sub(r"\*\*([^*]+)\*\*", r"\1", new_profile)
+    new_profile = re.sub(r"\*([^*]+)\*", r"\1", new_profile)
+    new_profile = re.sub(r"`([^`]+)`", r"\1", new_profile)
+
     if not new_profile or len(new_profile) < len(current_profile) // 2:
         print(f"[Warning] Profile update rejected: output too short or empty")
         return current_profile
