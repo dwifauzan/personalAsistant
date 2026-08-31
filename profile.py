@@ -12,12 +12,14 @@ response yang lebih personal sesuai informasi user.
 """
 
 import re
+import shutil
 
 import ollama
 
 from config import MODEL_NAME
 
 PROFILE_PATH = "profile.md"
+PROFILE_BACKUP_PATH = "profile.md.bak"
 
 # Pattern untuk mendeteksi permintaan update profil (Indonesia & English)
 UPDATE_PATTERNS = [
@@ -135,6 +137,12 @@ def apply_profile_update(user_request):
         new_profile = new_profile.strip("`").strip()
         if new_profile.lower().startswith("markdown"):
             new_profile = new_profile.split("\n", 1)[-1].strip()
+
+    if not new_profile or len(new_profile) < len(current_profile) // 2:
+        print(f"[Warning] Profile update rejected: output too short or empty")
+        return current_profile
+
+    shutil.copy2(PROFILE_PATH, PROFILE_BACKUP_PATH)
 
     with open(PROFILE_PATH, "w", encoding="utf-8") as f:
         f.write(new_profile)
