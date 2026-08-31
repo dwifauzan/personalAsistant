@@ -55,10 +55,4 @@ def _run_tool_calls(tool_calls: list[dict]) -> list[str]:
         for tc in tool_calls
     ]
 
-    loop = asyncio.new_event_loop()
-    try:
-        results = loop.run_until_complete(execute_tools_parallel(calls))
-    finally:
-        loop.close()
-
-    return results
+    return asyncio.run(execute_tools_parallel(calls))
