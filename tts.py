@@ -12,6 +12,7 @@ Konfigurasi suara ada di config.py:
 - KOKORO_LANGUAGE: bahasa (en-us, id-id, dll)
 """
 
+import threading
 from pathlib import Path
 
 import numpy as np
@@ -26,7 +27,8 @@ from config import (
     KOKORO_VOICES_PATH,
 )
 
-engine = None
+_engine = None
+_engine_lock = threading.Lock()
 
 class _FloatSpeedSession:
     """
@@ -48,6 +50,22 @@ class _FloatSpeedSession:
             input_feed["speed"] = np.asarray(input_feed["speed"], dtype=np.float32)
         return self._session.run(output_names, input_feed, *args, **kwargs)
 
+def _get_engine():
+    global _engine
+    if _engine is None:
+        with _engine_lock:
+            if _engine is None:
+                model_paths = (Path(KOKORO_MODEL_PATH), Path(KOKORO_VOICES_PATH))
+                missing = [str(path) for path in model_paths if not path.is_file()]
+                if missing:
+                    raise FileNotFoundError(
+                        "Missing Kokoro model files: " + ", ".join(missing)
+                    )
+
+                _engine = Kokoro(KOKORO_MODEL_PATH, KOKORO_VOICES_PATH)
+                _engine.sess = _FloatSpeedSession(_engine.sess)
+    return _engine
+
 def speak(text):
     """
     Mengubah text menjadi suara dan memutarnya melalui speaker.
@@ -63,17 +81,7 @@ def speak(text):
         - Menggunakan konfigurasi dari config.py (voice, speed, language)
         - Audio langsung diputar setelah di-generate (blocking)
     """
-    global engine
-    if engine is None:
-        model_paths = (Path(KOKORO_MODEL_PATH), Path(KOKORO_VOICES_PATH))
-        missing = [str(path) for path in model_paths if not path.is_file()]
-        if missing:
-            raise FileNotFoundError(
-                "Missing Kokoro model files: " + ", ".join(missing)
-            )
-
-        engine = Kokoro(KOKORO_MODEL_PATH, KOKORO_VOICES_PATH)
-        engine.sess = _FloatSpeedSession(engine.sess)
+    engine = _get_engine()
 
     audio, sample_rate = engine.create(
         text,
