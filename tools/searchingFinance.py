@@ -35,11 +35,10 @@ def _resolve_symbol(symbol_or_name: str) -> tuple[str, str]:
 
 async def _fetch_yahoo_finance(symbol: str) -> dict:
     url = (
-        "https://id.tradingview.com/symbols/IDX-COMPOSITE/"
-        + symbol
-        + "?interval=1d&range=1mo"
+        f"https://query1.finance.yahoo.com/v8/finance/chart/{symbol}"
+        "?interval=1d&range=1mo"
     )
-    print(f"[finance_lookup] Trying TradingView for: {symbol}")
+    print(f"[finance_lookup] Fetching Yahoo Finance for: {symbol}")
     return await fetch_json(url)
 
 
@@ -86,6 +85,9 @@ async def finance_lookup_handler(symbol_or_name: str, max_days: int = 7) -> str:
     print(f"[finance_lookup] Looking up: {symbol_or_name} → {yahoo_symbol}")
 
     data = await _fetch_yahoo_finance(yahoo_symbol)
+    if not data:
+        print(f"[finance_lookup] Yahoo Finance returned no data")
+        data = {}
     result = data.get("chart", {}).get("result", [{}])[0]
     meta = result.get("meta", {})
     closing_prices = (
@@ -118,7 +120,7 @@ async def finance_lookup_handler(symbol_or_name: str, max_days: int = 7) -> str:
                 if len([l for l in lines if ":" in l]) > max_days + 1:
                     break
 
-            print(f"[finance_lookup] Got data from TradingView")
+            print(f"[finance_lookup] Got data from Yahoo Finance")
             return "\n".join(lines)
 
     print(f"[finance_lookup] TradingView failed, trying Google Finance...")

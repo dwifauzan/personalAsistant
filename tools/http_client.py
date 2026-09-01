@@ -43,12 +43,14 @@ async def fetch(url: str, timeout: Optional[int] = None) -> str:
     return ""
 
 
-async def fetch_json(url: str, timeout: Optional[int] = None) -> dict:
+async def fetch_json(url: str, timeout: Optional[int] = None) -> Optional[dict]:
     text = await fetch(url, timeout)
     if not text:
-        return {}
+        print(f"[fetch_json] Empty response from: {url}")
+        return None
     import json
     try:
         return json.loads(text)
-    except json.JSONDecodeError:
-        return {}
+    except json.JSONDecodeError as e:
+        print(f"[fetch_json] JSON parse error from {url}: {e}")
+        return None

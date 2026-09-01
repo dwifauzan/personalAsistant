@@ -161,10 +161,10 @@ async def news_search_handler(query: str, max_results: int = 3) -> str:
 
         link = ""
         link_tag = item.find("link")
-        if link_tag and link_tag.next_sibling:
-            sibling_text = str(link_tag.next_sibling).strip()
-            if sibling_text.startswith("http"):
-                link = sibling_text
+        if link_tag:
+            link = link_tag.get_text(strip=True)
+            if not link.startswith("http"):
+                link = ""
 
         if not link:
             guid_tag = item.find("guid")
