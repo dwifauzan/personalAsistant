@@ -1,5 +1,7 @@
 import asyncio
 import html
+import ipaddress
+import socket
 import urllib.parse
 import warnings
 
@@ -218,8 +220,30 @@ async def news_search_handler(query: str, max_results: int = 3) -> str:
     return "\n---\n".join(parts) if parts else "Could not retrieve news content."
 
 
+def _validate_url(url: str) -> str | None:
+    parsed = urllib.parse.urlparse(url)
+    if parsed.scheme not in ("http", "https"):
+        return f"Blocked: scheme '{parsed.scheme}' not allowed (only http/https)"
+    hostname = parsed.hostname
+    if not hostname:
+        return "Blocked: no hostname in URL"
+    try:
+        resolved = socket.getaddrinfo(hostname, None)
+    except socket.gaierror:
+        return None
+    for family, _, _, _, sockaddr in resolved:
+        ip = ipaddress.ip_address(sockaddr[0])
+        if ip.is_private or ip.is_loopback or ip.is_link_local or ip.is_reserved:
+            return f"Blocked: URL resolves to private/reserved IP {ip}"
+    return None
+
+
 async def browse_url_handler(url: str, max_chars: int = 5000) -> str:
     print(f"[browse_url] Fetching: {url}")
+    error = _validate_url(url)
+    if error:
+        print(f"[browse_url] {error}")
+        return error
     page_html = await fetch(url)
     if not page_html:
         print(f"[browse_url] Failed to fetch URL")

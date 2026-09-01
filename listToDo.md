@@ -26,7 +26,7 @@
 
 | # | Location | Severity | Issue |
 |---|---|---|---|
-| 1 | `tools/executor.py` + `browse_url` | **High** | SSRF — LLM can browse ANY URL including cloud metadata (`http://169.254.169.254/`), localhost Ollama, internal network IPs. No allowlist or blocklist |
+| ~~1~~ | ~~`tools/executor.py` + `browse_url`~~ | ~~**High**~~ | ~~SSRF~~ — Fixed: added `_validate_url()` in `tools/searching.py` — blocks non-http(s) schemes, resolves hostnames and rejects private/loopback/link-local/reserved IPs |
 | 2 | `profile.py:139` | **High** | Arbitrary file write — LLM output written directly to `profile.md`. Prompt injection could make the LLM write malicious content |
 | 3 | `profile.md` | **Medium** | Sensitive data in plaintext — health records (panic attack, mental health, blood pressure) stored unencrypted |
 | 4 | `tools/http_client.py` | **Medium** | No URL scheme validation — could be used with `file://` protocol to read local files |
