@@ -22,6 +22,7 @@ async def _extract_search_results_bing(query: str, max_results: int = 5) -> list
 
     page_html = await fetch(url)
     if not page_html:
+        print(f"[web_search] Failed to fetch Bing page for: {query}")
         return []
 
 
@@ -64,7 +65,6 @@ async def _extract_search_results_bing(query: str, max_results: int = 5) -> list
             "url": actual_url,
             "snippet": snippet,
         })
-
     return results
 
 
@@ -104,7 +104,8 @@ async def _fetch_pages_parallel(results: list[dict], max_chars: int = 5000) -> l
     return await asyncio.gather(*tasks)
 
 
-async def web_search_handler(query: str, max_results: int = 3) -> str:
+async def web_search_handler(query: str, max_results: int | str = 3) -> str:
+    max_results = int(max_results)
     print(f"[web_search] Searching Bing for: {query}")
     results = await _extract_search_results_bing(query, max_results=max_results * 2)
 
@@ -133,7 +134,8 @@ async def web_search_handler(query: str, max_results: int = 3) -> str:
     return "\n---\n".join(parts) if parts else "Could not retrieve page content."
 
 
-async def news_search_handler(query: str, max_results: int = 3) -> str:
+async def news_search_handler(query: str, max_results: int | str = 3) -> str:
+    max_results = int(max_results)
     print(f"[news_search] Searching Google News for: {query}")
     url = "https://news.google.com/rss/search?" + urllib.parse.urlencode({
         "q": query,
@@ -147,7 +149,6 @@ async def news_search_handler(query: str, max_results: int = 3) -> str:
         print("[news_search] Failed to fetch RSS feed")
         return "No news results found."
 
-    from bs4 import BeautifulSoup
     soup = BeautifulSoup(feed, "html.parser")
     results = []
 
@@ -238,7 +239,9 @@ def _validate_url(url: str) -> str | None:
     return None
 
 
-async def browse_url_handler(url: str, max_chars: int = 5000) -> str:
+# when browsing a URL, we fetch the page and extract text content
+async def browse_url_handler(url: str, max_chars: int | str = 5000) -> str:
+    max_chars = int(max_chars)
     print(f"[browse_url] Fetching: {url}")
     error = _validate_url(url)
     if error:

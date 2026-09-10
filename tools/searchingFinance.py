@@ -80,7 +80,8 @@ def _parse_google_finance(html: str) -> dict:
     return result
 
 
-async def finance_lookup_handler(symbol_or_name: str, max_days: int = 7) -> str:
+async def finance_lookup_handler(symbol_or_name: str, max_days: int | str = 7) -> str:
+    max_days = int(max_days)
     yahoo_symbol, google_symbol = _resolve_symbol(symbol_or_name)
     print(f"[finance_lookup] Looking up: {symbol_or_name} → {yahoo_symbol}")
 
