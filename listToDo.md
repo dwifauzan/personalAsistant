@@ -27,7 +27,7 @@
 | # | Location | Severity | Issue |
 |---|---|---|---|
 | ~~1~~ | ~~`tools/executor.py` + `browse_url`~~ | ~~**High**~~ | ~~SSRF~~ — Fixed: added `_validate_url()` in `tools/searching.py` — blocks non-http(s) schemes, resolves hostnames and rejects private/loopback/link-local/reserved IPs |
-| 2 | `profile.py:139` | **High** | Arbitrary file write — LLM output written directly to `profile.md`. Prompt injection could make the LLM write malicious content |
+| ~~2~~ | ~~`profile.py:139`~~ | ~~**High**~~ | ~~Arbitrary file write~~ — Fixed: added `_sanitize_profile_content()` to strip scripts/commands/injection patterns, added max length check (10KB) |
 | 3 | `profile.md` | **Medium** | Sensitive data in plaintext — health records (panic attack, mental health, blood pressure) stored unencrypted |
 | 4 | `tools/http_client.py` | **Medium** | No URL scheme validation — could be used with `file://` protocol to read local files |
 | 5 | `tools/searching.py:15-19` | **Low** | Bing scraping violates their ToS — could result in IP being blocked |

@@ -65,8 +65,13 @@ def build_system_prompt():
     profile = load_profile()
     # adjust instruction to ai
     return (
-        "You are E.V, a concise voice assistant. friendly and cheerful assistant, be warm and use humor. Reply in 1-2 short sentences, "
-              "Your are a professional assistant, Be helpful and informative.\n"
+        "You are E.V, a concise voice assistant. friendly and cheerful assistant, be warm and use humor. Reply in 1-2 short sentences.\n"
+              "You are a professional assistant, be helpful and informative.\n"
+              "CRITICAL RULES:\n"
+              "- ONLY answer the MOST RECENT user message. Ignore all previous user questions.\n"
+              "- ONLY use tools for the MOST RECENT question. Do NOT re-search old topics.\n"
+              "- Do NOT mention or answer previous questions in your response.\n"
+              "- When you need current information, use the provided tools. Do NOT describe what you would search — actually call the tool.\n"
               f"User profile:\n{profile}\n"
               "Use the profile information when relevant to the user's question."
     )
@@ -89,6 +94,28 @@ def wants_profile_update(text):
     return bool(re.search("|".join(UPDATE_PATTERNS), text, re.I))
 
 
+def _sanitize_profile_content(content: str) -> str:
+    dangerous_patterns = [
+        r"<script[^>]*>.*?</script>",
+        r"javascript:",
+        r"on\w+\s*=",
+        r"<iframe[^>]*>.*?</iframe>",
+        r"<object[^>]*>.*?</object>",
+        r"<embed[^>]*>",
+        r"eval\s*\(",
+        r"exec\s*\(",
+        r"system\s*\(",
+        r"subprocess",
+        r"os\.system",
+        r"__import__",
+        r"import\s+os",
+        r"import\s+subprocess",
+    ]
+    for pattern in dangerous_patterns:
+        content = re.sub(pattern, "", content, flags=re.IGNORECASE | re.DOTALL)
+    return content
+
+
 def apply_profile_update(user_request):
     """
     Mengupdate profil user berdasarkan permintaan menggunakan AI.
@@ -104,13 +131,15 @@ def apply_profile_update(user_request):
         1. Load profil saat ini
         2. Kirim ke AI dengan instruksi update
         3. AI akan modify existing info atau append info baru
-        4. Simpan profil baru ke file
-        5. Return profil yang sudah diupdate
+        4. Validasi dan sanitasi konten
+        5. Simpan profil baru ke file
+        6. Return profil yang sudah diupdate
     
     Note:
         - AI hanya mengubah informasi yang diminta, tidak mengubah bagian lain
         - Jika info sudah ada, akan di-update. Jika belum ada, akan ditambah
         - Format markdown dihapus jika AI secara tidak sengaja menambahkannya
+        - Konten berbahaya (script, command injection) akan dihapus
     """
     current_profile = load_profile()
     prompt = (
@@ -132,7 +161,6 @@ def apply_profile_update(user_request):
     response = ollama.generate(model=MODEL_NAME, prompt=prompt)
     new_profile = response["response"].strip()
 
-    # Hapus pembungkus markdown jika LLM secara tidak sengaja mengembalikan ```
     if new_profile.startswith("```"):
         new_profile = new_profile.strip("`").strip()
         if new_profile.lower().startswith("markdown"):
@@ -143,8 +171,14 @@ def apply_profile_update(user_request):
     new_profile = re.sub(r"\*([^*]+)\*", r"\1", new_profile)
     new_profile = re.sub(r"`([^`]+)`", r"\1", new_profile)
 
+    new_profile = _sanitize_profile_content(new_profile)
+
     if not new_profile or len(new_profile) < len(current_profile) // 2:
         print(f"[Warning] Profile update rejected: output too short or empty")
+        return current_profile
+
+    if len(new_profile) > 10000:
+        print(f"[Warning] Profile update rejected: output too long ({len(new_profile)} chars)")
         return current_profile
 
     shutil.copy2(PROFILE_PATH, PROFILE_BACKUP_PATH)

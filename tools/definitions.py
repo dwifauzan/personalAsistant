@@ -81,5 +81,55 @@ TOOL_DEFINITIONS = [
                 "required": ["url"]
             }
         }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "set_reminder",
+            "description": "Set a reminder for the user at a specific time. Use when the user asks to be reminded about something at a certain time.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "time": {
+                        "type": "string",
+                        "description": "Time for the reminder in HH:MM format (24-hour). Example: '20:00' for 8 PM."
+                    },
+                    "message": {
+                        "type": "string",
+                        "description": "The reminder message to speak to the user"
+                    }
+                },
+                "required": ["time", "message"]
+            }
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "get_reminders",
+            "description": "Get all active reminders. Use when the user asks to see their reminders.",
+            "parameters": {
+                "type": "object",
+                "properties": {},
+                "required": []
+            }
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "delete_reminder",
+            "description": "Delete a reminder at a specific time. Use when the user wants to remove a reminder.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "time": {
+                        "type": "string",
+                        "description": "Time of the reminder to delete in HH:MM format (24-hour)"
+                    }
+                },
+                "required": ["time"]
+            }
+        }
     }
 ]

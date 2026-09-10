@@ -30,7 +30,7 @@ KOKORO_SPEED = 1.0
 KOKORO_SAMPLE_RATE = 24000
 
 # Jumlah token maksimum untuk response AI
-NUM_PREDICT = 140
+NUM_PREDICT = 120
 
 # Apakah browser otomatis terbuka saat melakukan pencarian web
 OPEN_BROWSER = True
