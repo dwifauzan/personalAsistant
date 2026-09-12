@@ -29,6 +29,7 @@ from config import (
 
 _engine = None
 _engine_lock = threading.Lock()
+_speech_lock = threading.Lock()
 
 class _FloatSpeedSession:
     """
@@ -81,13 +82,14 @@ def speak(text):
         - Menggunakan konfigurasi dari config.py (voice, speed, language)
         - Audio langsung diputar setelah di-generate (blocking)
     """
-    engine = _get_engine()
+    with _speech_lock:
+        engine = _get_engine()
 
-    audio, sample_rate = engine.create(
-        text,
-        voice=KOKORO_VOICE,
-        speed=KOKORO_SPEED,
-        lang=KOKORO_LANGUAGE,
-    )
-    nacsound.play(audio, samplerate=sample_rate or KOKORO_SAMPLE_RATE)
-    nacsound.wait()
+        audio, sample_rate = engine.create(
+            text,
+            voice=KOKORO_VOICE,
+            speed=KOKORO_SPEED,
+            lang=KOKORO_LANGUAGE,
+        )
+        nacsound.play(audio, samplerate=sample_rate or KOKORO_SAMPLE_RATE)
+        nacsound.wait()

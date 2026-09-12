@@ -1,19 +1,20 @@
 import threading
+import time
 from profile import apply_profile_update, build_system_prompt, wants_profile_update
 from llm import chat
 from tts import speak
 from reminder.alertMe import check_reminders
-import time
 
 history = []
+shutdown_event = threading.Event()
 
 def reminder_loop():
-    while True:
+    while not shutdown_event.is_set():
         try:
             check_reminders()
         except Exception as e:
             print(f"[ERROR] Reminder check failed: {e}")
-        time.sleep(30)
+        shutdown_event.wait(30)
 
 reminder_thread = threading.Thread(target=reminder_loop, daemon=True)
 reminder_thread.start()
@@ -65,4 +66,5 @@ try:
             print(f"[Error] {e}")
             print("Something went wrong. Please try again.")
 except KeyboardInterrupt:
+    shutdown_event.set()
     print("\nGoodbye! E.V shutting down...")
