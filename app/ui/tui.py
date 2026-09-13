@@ -40,6 +40,8 @@ class AssistantDashboard:
         self.audio_status = "Idle"
         self.processing = False
         self.activity = "Ready"
+        self.activity_log: list[str] = []
+        self.spinner_index = 0
         self._worker: threading.Thread | None = None
         self.messages: list[tuple[str, str]] = [
             ("system", "Welcome back. Ask E.V anything.")
@@ -52,6 +54,8 @@ class AssistantDashboard:
         self._setup_colors()
 
         while not self.shutdown_event.is_set():
+            if self.processing:
+                self.spinner_index = (self.spinner_index + 1) % 4
             self._process_events()
             self._play_pending_speech()
             self._draw()
@@ -92,6 +96,7 @@ class AssistantDashboard:
         self.input_buffer = ""
         record_input(len(text))
         self.messages.append(("you", text))
+        self.messages.append(("activity", "Working..."))
         self.processing = True
         self.status = "Thinking"
         self._worker = threading.Thread(
@@ -101,12 +106,10 @@ class AssistantDashboard:
 
     def _answer(self, text: str) -> None:
         try:
-            output = io.StringIO()
+            output = _ActivityWriter(self.events)
             with contextlib.redirect_stdout(output):
                 response = self.ask(text)
-            for line in output.getvalue().splitlines():
-                if line.strip():
-                    self.events.put(("activity", line.strip()))
+            output.flush()
             self.events.put(("response", response))
         except Exception as error:
             self.events.put(("error", str(error)))
@@ -117,15 +120,21 @@ class AssistantDashboard:
                 event, payload = self.events.get_nowait()
             except queue.Empty:
                 return
-            self.processing = False
             if event == "activity":
                 self.activity = payload
+                self.activity_log.append(payload)
+                self.activity_log = self.activity_log[-8:]
+                self.messages.append(("activity", payload))
             elif event == "response":
+                self.processing = False
                 self.messages.append(("ev", payload))
+                self.messages.append(("activity", "Completed"))
                 self.speech_queue.put(payload)
                 self.status = "Ready"
             else:
+                self.processing = False
                 self.messages.append(("error", payload))
+                self.messages.append(("activity", "Stopped with an error"))
                 self.status = "Error"
 
     def _play_pending_speech(self) -> None:
@@ -157,8 +166,8 @@ class AssistantDashboard:
 
         sidebar_width = min(34, max(28, width // 3))
         chat_width = width - sidebar_width - 3
-        content_top = 4
-        content_height = height - 8
+        content_top = 3
+        content_height = height - 7
         self._draw_chat(content_top, 1, content_height, chat_width)
         self._draw_sidebar(
             content_top,
@@ -175,17 +184,7 @@ class AssistantDashboard:
         self._fill(0, 0, width, " ", 1)
         self._write(0, 2, "✦ E.V", 1, curses.A_BOLD)
         self._write(0, 10, "PERSONAL AI", 0, curses.A_BOLD)
-        self._write(0, max(2, width - 37), f"MODEL  {MODEL_NAME}"[:20], 0)
-        self._write(0, width - 16, now.strftime("%H:%M:%S"), 2, curses.A_BOLD)
-        backend = usage.backend if usage.backend != "not connected" else "offline"
-        self._write(
-            1,
-            2,
-            f"● {self.status.upper():<10}  AUDIO {self.audio_status.upper():<9}  "
-            f"BACKEND {backend.upper()}",
-            3 if self.processing or self.audio_status == "Speaking" else 2,
-        )
-        self._write(2, 0, "─" * width, 1)
+        self._write(1, 0, "─" * width, 1)
 
     def _draw_chat(self, top: int, left: int, height: int, width: int) -> None:
         self._write(top, left, "CHAT", 1, curses.A_BOLD)
@@ -193,8 +192,16 @@ class AssistantDashboard:
         inner_width = width - 2
         rendered: list[tuple[str, str, int]] = []
         for role, message in self.messages:
-            color = {"you": 5, "ev": 2, "error": 4, "system": 6}.get(role, 0)
-            label = {"you": "YOU", "ev": "E.V", "error": "ERROR", "system": "SYSTEM"}.get(
+            color = {"you": 5, "ev": 2, "error": 4, "system": 6, "activity": 1}.get(role, 0)
+            if role == "activity":
+                rendered.extend(("", f"  ├ {message}", color) for message in _wrap(message, inner_width))
+                continue
+            label = {
+                "you": "YOU",
+                "ev": "E.V",
+                "error": "ERROR",
+                "system": "SYSTEM",
+            }.get(
                 role, role.upper()
             )
             rendered.append((label, "", color))
@@ -220,36 +227,66 @@ class AssistantDashboard:
         usage: UsageSnapshot,
         now: datetime,
     ) -> None:
-        self._panel(top, left, height, width, "WORKSPACE")
+        self._write(top, left, "│", 1)
+        for row in range(top + 1, top + height):
+            self._write(row, left, "│", 1)
+        content_left = left + 3
+        content_width = width - 4
+        self._write(top, content_left, "WORKSPACE", 1, curses.A_BOLD)
+        self._write(top + 1, content_left, "─" * max(0, content_width), 1)
+
         reminders = _load_reminders()
         elapsed = max(0, int((now - usage.started_at).total_seconds()))
-        rows = [
-            ("TIME", now.strftime("%a, %d %b")),
-            ("CLOCK", now.strftime("%H:%M:%S")),
-            ("", ""),
-            ("REMINDERS", str(len(reminders))),
+        rows: list[tuple[str, str, int]] = [
+            ("section", "LOCAL TIME", 6),
+            ("value", now.strftime("%H:%M:%S"), 2),
+            ("muted", now.strftime("%a, %d %b %Y"), 0),
+            ("blank", "", 0),
+            ("section", "REMINDERS", 6),
+            ("value", f"{len(reminders)} active", 2 if reminders else 0),
         ]
         for reminder in reminders[:3]:
-            rows.append(("", f"{reminder.get('time', '--:--')}  {reminder.get('message', '')}"))
-        rows.extend(
-            [
-                ("", ""),
-                ("AI USAGE", ""),
-                ("MODEL CALLS", str(usage.model_calls)),
-                ("TOOL CALLS", str(usage.tool_calls)),
-                ("INPUT", f"{usage.input_chars:,} chars"),
-                ("OUTPUT", f"{usage.output_chars:,} chars"),
-                ("SESSION", f"{elapsed // 60}m {elapsed % 60:02d}s"),
-            ]
-        )
-        row = top + 1
-        for label, value in rows:
-            if row >= top + height - 1:
+            rows.append(("item", f"{reminder.get('time', '--:--')}  {reminder.get('message', '')}", 0))
+        rows.extend([
+            ("blank", "", 0),
+            ("section", "CONNECTION", 6),
+            ("metric", f"BACKEND       {usage.backend.upper()}", 0),
+            ("metric", f"MODEL         {MODEL_NAME}", 0),
+            ("blank", "", 0),
+            ("section", "AI USAGE", 6),
+            ("metric", f"MODEL CALLS   {usage.model_calls}", 0),
+            ("metric", f"TOOL CALLS    {usage.tool_calls}", 0),
+            ("metric", f"INPUT         {usage.input_chars:,}", 0),
+            ("metric", f"OUTPUT        {usage.output_chars:,}", 0),
+            ("metric", f"SESSION       {elapsed // 60}m {elapsed % 60:02d}s", 0),
+            ("blank", "", 0),
+            ("section", "LATEST ACTIVITY", 6),
+        ])
+        for activity in self.activity_log[-4:]:
+            rows.append(("item", activity, 0))
+        row = top + 2
+        for kind, value, color in rows:
+            if row >= top + height:
                 break
-            color = 6 if label in {"REMINDERS", "AI USAGE"} else 0
-            text = f"{label:<12} {value}" if label else f"  {value}"
-            self._write(row, left + 2, text[:width - 3], color, curses.A_BOLD if label in {"REMINDERS", "AI USAGE"} else 0)
+            if kind == "blank":
+                row += 1
+                continue
+            if kind == "section":
+                self._write(row, content_left, value[:content_width], color, curses.A_BOLD)
+                row += 1
+                continue
+            prefix = "› " if kind == "item" else ""
+            self._write(
+                row,
+                content_left,
+                f"{prefix}{value}"[:content_width],
+                color,
+                curses.A_BOLD if kind == "value" else 0,
+            )
             row += 1
+
+    def _spinner(self) -> str:
+        return ("|", "/", "-", "\\")[self.spinner_index] if self.processing else "●"
 
     def _draw_input(self, height: int, width: int) -> None:
         self._fill(height - 4, 0, width, " ", 1)
@@ -287,6 +324,27 @@ class AssistantDashboard:
 
 def color_pair(number: int) -> int:
     return curses.color_pair(number) if curses.has_colors() else 0
+
+
+class _ActivityWriter:
+    """Convert worker-thread stdout into live TUI activity events."""
+
+    def __init__(self, events: queue.Queue[tuple[str, str]]):
+        self.events = events
+        self.buffer = ""
+
+    def write(self, text: str) -> int:
+        self.buffer += text
+        while "\n" in self.buffer:
+            line, self.buffer = self.buffer.split("\n", 1)
+            if line.strip():
+                self.events.put(("activity", line.strip()))
+        return len(text)
+
+    def flush(self) -> None:
+        if self.buffer.strip():
+            self.events.put(("activity", self.buffer.strip()))
+        self.buffer = ""
 
 
 def _wrap(text: str, width: int) -> list[str]:
