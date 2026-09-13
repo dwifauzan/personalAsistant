@@ -4,19 +4,30 @@ import ollama
 import asyncio
 import json
 import re
+import lmstudio
 from config import MODEL_NAME, NUM_PREDICT, MAX_TOOL_ROUNDS
 from tools.definitions import TOOL_DEFINITIONS
 from tools.executor import execute_tools_parallel
 
 
 def chat(messages: list[dict]) -> dict:
+    try:
+        return _chat_loop(messages, backend="ollama")
+    except Exception as e:
+        if not lmstudio.is_connection_error(e):
+            raise
+        print(f"[INFO] Ollama unavailable ({e}), switching to LM Studio...")
+        if not lmstudio.is_available():
+            raise RuntimeError(
+                "Ollama is unreachable and LM Studio is not running "
+                "on http://localhost:1234. Start one of them and try again."
+            ) from e
+        return _chat_loop(messages, backend="lmstudio")
+
+
+def _chat_loop(messages: list[dict], backend: str = "ollama") -> dict:
     for round_num in range(MAX_TOOL_ROUNDS):
-        response = ollama.chat(
-            model=MODEL_NAME,
-            messages=messages,
-            tools=TOOL_DEFINITIONS,
-            options={"num_predict": NUM_PREDICT},
-        )
+        response = _backend_chat(messages, backend, with_tools=True)
 
         message = response["message"]
 
@@ -50,12 +61,23 @@ def chat(messages: list[dict]) -> dict:
 
     print(f"[Warning] Max tool rounds ({MAX_TOOL_ROUNDS}) reached, forcing final response")
 
-    final_response = ollama.chat(
-        model=MODEL_NAME,
-        messages=messages,
-        options={"num_predict": NUM_PREDICT},
-    )
-    return final_response
+    return _backend_chat(messages, backend, with_tools=False)
+
+
+def _backend_chat(messages: list[dict], backend: str, with_tools: bool) -> dict:
+    if backend == "lmstudio":
+        return lmstudio.chat(
+            messages,
+            tools=TOOL_DEFINITIONS if with_tools else None,
+        )
+    kwargs = {
+        "model": MODEL_NAME,
+        "messages": messages,
+        "options": {"num_predict": NUM_PREDICT},
+    }
+    if with_tools:
+        kwargs["tools"] = TOOL_DEFINITIONS
+    return ollama.chat(**kwargs)
 
 
 def _parse_text_tool_calls(text: str) -> list[dict] | None:

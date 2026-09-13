@@ -11,6 +11,12 @@ _PROJECT_ROOT = Path(__file__).parent
 
 MODEL_NAME = "llama3.1:latest"
 
+# Fallback LLM via LM Studio (OpenAI-compatible API).
+# Used automatically when Ollama is unreachable (second computer off).
+LMSTUDIO_BASE_URL = "http://localhost:1234/v1"
+LMSTUDIO_MODEL_NAME = "google/gemma-4-e4b"
+LMSTUDIO_TIMEOUT = 120
+
 KOKORO_MODEL_PATH = str(_PROJECT_ROOT / "kokoro-v1.0.onnx")
 
 KOKORO_VOICES_PATH = str(_PROJECT_ROOT / "voices-v1.0.bin")

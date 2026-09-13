@@ -16,6 +16,7 @@ import shutil
 
 import ollama
 
+import lmstudio
 from config import MODEL_NAME
 
 PROFILE_PATH = "profile.md"
@@ -158,7 +159,13 @@ def apply_profile_update(user_request):
         f"USER REQUEST:\n{user_request}\n\n"
         "UPDATED PROFILE:"
     )
-    response = ollama.generate(model=MODEL_NAME, prompt=prompt)
+    try:
+        response = ollama.generate(model=MODEL_NAME, prompt=prompt)
+    except Exception as e:
+        if not lmstudio.is_connection_error(e):
+            raise
+        print(f"[INFO] Ollama unavailable ({e}), switching to LM Studio...")
+        response = lmstudio.generate(prompt)
     new_profile = response["response"].strip()
 
     if new_profile.startswith("```"):
