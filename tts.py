@@ -30,6 +30,8 @@ from config import (
 _engine = None
 _engine_lock = threading.Lock()
 _speech_lock = threading.Lock()
+_FADE_MS = 12
+_EDGE_SILENCE_MS = 20
 
 class _FloatSpeedSession:
     """
@@ -77,6 +79,33 @@ def should_speak(text) -> bool:
     return bool(text and text.strip())
 
 
+def _prepare_audio(audio, sample_rate: int) -> np.ndarray:
+    """Make generated audio safe for a speaker and suppress edge clicks."""
+    prepared = np.asarray(audio, dtype=np.float32).reshape(-1)
+    prepared = np.nan_to_num(prepared, nan=0.0, posinf=0.0, neginf=0.0)
+    prepared = np.clip(prepared, -1.0, 1.0)
+
+    fade_samples = min(
+        len(prepared) // 2,
+        max(1, int(sample_rate * _FADE_MS / 1000)),
+    )
+    if fade_samples:
+        prepared[:fade_samples] *= np.linspace(
+            0.0, 1.0, fade_samples, dtype=np.float32
+        )
+        prepared[-fade_samples:] *= np.linspace(
+            1.0, 0.0, fade_samples, dtype=np.float32
+        )
+    silence_samples = int(sample_rate * _EDGE_SILENCE_MS / 1000)
+    if silence_samples:
+        prepared = np.pad(
+            prepared,
+            (silence_samples, silence_samples),
+            mode="constant",
+        )
+    return prepared
+
+
 def speak(text):
     """
     Mengubah text menjadi suara dan memutarnya melalui speaker.
@@ -97,13 +126,18 @@ def speak(text):
         print("[Warning] speak() called with empty text, skipping TTS.")
         return None
 
-    engine = _get_engine()
-
-    audio, sample_rate = engine.create(
-        text,
-        voice=KOKORO_VOICE,
-        speed=KOKORO_SPEED,
-        lang=KOKORO_LANGUAGE,
-    )
-    nacsound.play(audio, samplerate=sample_rate or KOKORO_SAMPLE_RATE)
-    nacsound.wait()
+    # The reminder thread and the dashboard worker can both call speak().
+    # Serialize generation and playback so sounddevice never has two streams
+    # competing for the same speaker.
+    with _speech_lock:
+        engine = _get_engine()
+        audio, sample_rate = engine.create(
+            text,
+            voice=KOKORO_VOICE,
+            speed=KOKORO_SPEED,
+            lang=KOKORO_LANGUAGE,
+        )
+        actual_sample_rate = sample_rate or KOKORO_SAMPLE_RATE
+        audio = _prepare_audio(audio, actual_sample_rate)
+        nacsound.play(audio, samplerate=actual_sample_rate)
+        nacsound.wait()

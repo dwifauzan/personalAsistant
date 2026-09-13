@@ -33,14 +33,14 @@ def remove_reminder(time_str):
         json.dump(reminders, f, indent=2)
 
 
-def check_reminders():
+def check_reminders(speak_fn=speak):
     current_time = checkTime()
     reminders = load_reminders()
 
     for reminder in reminders:
         if reminder["time"] == current_time:
             try:
-                speak(reminder["message"])
+                speak_fn(reminder["message"])
                 print(f"Reminder triggered: {reminder['message']}")
             except Exception as e:
                 print(f"[ERROR] Failed to speak reminder: {e}")

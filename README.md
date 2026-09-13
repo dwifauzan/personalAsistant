@@ -27,8 +27,8 @@ requirements.txt
 
 ## Flow
 
-1. **Start `main.py:10-20`:** spawn `reminder_loop()` daemon thread (`check_reminders()` every 30s).
-2. **Input loop `main.py:24-61`:** `input("You: ")`, keep `history` sliding window `history[-4:]` (~2 turns).
+1. **Start `main.py`:** spawn `reminder_loop()` daemon thread (`check_reminders()` every 30s), then launch the curses dashboard.
+2. **TUI input `tui.py`:** display a live clock, active reminder times, conversation output, session AI usage, and live AI/audio status. Type a message and press Enter; use Ctrl-C or Ctrl-Q to exit. AI and reminder speech are queued through the dashboard loop to avoid concurrent CoreAudio playback.
 3. **Profile branch `main.py:32-40`, `profile.py:80-188`:**
    `wants_profile_update()` regex match (ID/EN) -> `ollama.generate()` rewrites `profile.md` (with `.bak`, sanitize, length checks) -> short reply + `speak()`.
 4. **Normal branch `main.py:47-61`:**
@@ -37,6 +37,8 @@ requirements.txt
    `ollama.chat(..., tools=TOOL_DEFINITIONS)` -> if no `tool_calls`, fallback `_parse_text_tool_calls()` regex for models emitting JSON in text -> if none, return. Else `_run_tool_calls()` -> `asyncio.run(execute_tools_parallel())` -> append `assistant` + `role=tool` results, repeat. After max, force final `ollama.chat()` without tools.
 6. **Speak `tts.py:69-93`:** lazy singleton `Kokoro()` (`_FloatSpeedSession` for float32 speed fix), `engine.create(text, voice=af_bella, lang=en-us)` -> `sounddevice.play()+wait()` blocking.
 7. **Reminders:** `tools/reminder.py` writes `reminder/reminders.json` (`HH:MM` normalized). `reminder/alertMe.py:36-52` matches `datetime.now("%H:%M")`, `speak(message)`, deletes fired entry.
+
+`metrics.py` tracks model calls, tool calls, input/output characters, backend, and session duration for the dashboard's AI usage panel.
 
 ## Setup
 

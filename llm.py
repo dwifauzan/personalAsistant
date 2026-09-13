@@ -8,6 +8,7 @@ import lmstudio
 from config import MODEL_NAME, NUM_PREDICT, MAX_TOOL_ROUNDS, MAX_TOOL_CONTENT_CHARS
 from tools.definitions import TOOL_DEFINITIONS
 from tools.executor import execute_tools_parallel
+from metrics import record_model_call, record_output, record_tool_calls
 
 
 def chat(messages: list[dict]) -> dict:
@@ -43,6 +44,7 @@ def _chat_loop(messages: list[dict], backend: str = "ollama") -> dict:
             tool_calls = message["tool_calls"]
 
         print(f"[Round {round_num + 1}] Executing {tool_calls} tool(s) in parallel...")
+        record_tool_calls(len(tool_calls))
 
         results = _run_tool_calls(tool_calls)
 
@@ -71,11 +73,14 @@ def _chat_loop(messages: list[dict], backend: str = "ollama") -> dict:
 
 
 def _backend_chat(messages: list[dict], backend: str, with_tools: bool) -> dict:
+    record_model_call(backend)
     if backend == "lmstudio":
-        return lmstudio.chat(
+        response = lmstudio.chat(
             messages,
             tools=TOOL_DEFINITIONS if with_tools else None,
         )
+        record_output(len(response["message"].get("content", "")))
+        return response
     kwargs = {
         "model": MODEL_NAME,
         "messages": messages,
@@ -83,7 +88,9 @@ def _backend_chat(messages: list[dict], backend: str, with_tools: bool) -> dict:
     }
     if with_tools:
         kwargs["tools"] = TOOL_DEFINITIONS
-    return ollama.chat(**kwargs)
+    response = ollama.chat(**kwargs)
+    record_output(len(response["message"].get("content", "")))
+    return response
 
 
 def _parse_text_tool_calls(text: str) -> list[dict] | None:
