@@ -13,14 +13,16 @@ response yang lebih personal sesuai informasi user.
 
 import re
 import shutil
+from pathlib import Path
 
 import ollama
 
-import lmstudio
-from config import MODEL_NAME
+from . import lmstudio
+from .config import MODEL_NAME
 
-PROFILE_PATH = "profile.md"
-PROFILE_BACKUP_PATH = "profile.md.bak"
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+PROFILE_PATH = PROJECT_ROOT / "profile.md"
+PROFILE_BACKUP_PATH = PROJECT_ROOT / "profile.md.bak"
 
 # Pattern untuk mendeteksi permintaan update profil (Indonesia & English)
 UPDATE_PATTERNS = [

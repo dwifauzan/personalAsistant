@@ -13,7 +13,7 @@ warnings.filterwarnings("ignore", category=XMLParsedAsHTMLWarning)
 
 from tools.http_client import fetch
 from tools.html_utils import extract_text
-from config import MAX_CONCURRENT_FETCHES
+from app.config import MAX_CONCURRENT_FETCHES
 
 
 async def _extract_search_results_bing(query: str, max_results: int = 5) -> list[dict]:

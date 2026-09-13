@@ -1,11 +1,11 @@
 import threading
 import queue
 
-from llm import chat
-from profile import apply_profile_update, build_system_prompt, wants_profile_update
+from app.llm import chat
+from app.profile import apply_profile_update, build_system_prompt, wants_profile_update
 from reminder.alertMe import check_reminders
-from tts import should_speak, speak
-from tui import run_dashboard
+from app.tts import should_speak, speak
+from app.ui.tui import run_dashboard
 
 
 history: list[dict] = []

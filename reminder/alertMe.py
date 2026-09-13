@@ -5,7 +5,7 @@ from datetime import datetime
 import time
 
 sys.path.append(str(Path(__file__).parent.parent))
-from tts import speak
+from app.tts import speak
 
 REMINDERS_FILE = Path(__file__).parent / "reminders.json"
 

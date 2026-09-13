@@ -5,12 +5,15 @@ CLI voice assistant named **E.V**, built on `ollama` (`llama3.1:latest`) + `Koko
 ## Structure
 
 ```
-main.py                  -> entry loop + reminder thread
-config.py                -> all settings (model, TTS voice, timeouts)
-llm.py                   -> Ollama chat + tool-call loop
-profile.py + profile.md  -> long-term user memory
-tts.py                   -> speech output (Kokoro ONNX)
-kokoro-v1.0.onnx / voices-v1.0.bin -> TTS model files
+main.py                  -> application entry point
+app/                     -> assistant application package
+  config.py              -> all settings (model, TTS voice, timeouts)
+  llm.py                 -> Ollama/LM Studio chat + tool-call loop
+  lmstudio.py            -> LM Studio HTTP fallback backend
+  metrics.py             -> session usage counters for the TUI
+  profile.py             -> long-term user memory service
+  tts.py                 -> speech generation and serialized playback
+  ui/tui.py              -> curses dashboard and input loop
 tools/                   -> LLM-callable tools
   definitions.py         -> 7 tool schemas for Ollama
   executor.py            -> name->handler map + asyncio.gather parallel run
@@ -21,6 +24,8 @@ tools/                   -> LLM-callable tools
   html_utils.py          -> BeautifulSoup extract_text
 reminder/
   alertMe.py + reminders.json -> background alerter
+profile.md               -> long-term user profile data
+kokoro-v1.0.onnx / voices-v1.0.bin -> TTS model files
 docs/TOOLS_DOCUMENTATION.md -> detailed tools docs
 requirements.txt
 ```
@@ -28,17 +33,17 @@ requirements.txt
 ## Flow
 
 1. **Start `main.py`:** spawn `reminder_loop()` daemon thread (`check_reminders()` every 30s), then launch the curses dashboard.
-2. **TUI input `tui.py`:** display a live clock, active reminder times, conversation output, session AI usage, and live AI/audio status. Type a message and press Enter; use Ctrl-C or Ctrl-Q to exit. AI and reminder speech are queued through the dashboard loop to avoid concurrent CoreAudio playback.
-3. **Profile branch `main.py:32-40`, `profile.py:80-188`:**
+2. **TUI input `app/ui/tui.py`:** display a live clock, active reminder times, conversation output, session AI usage, and live AI/audio status. Type a message and press Enter; use Ctrl-C or Ctrl-Q to exit. AI and reminder speech are queued through the dashboard loop to avoid concurrent CoreAudio playback.
+3. **Profile branch `main.py`, `app/profile.py`:**
    `wants_profile_update()` regex match (ID/EN) -> `ollama.generate()` rewrites `profile.md` (with `.bak`, sanitize, length checks) -> short reply + `speak()`.
 4. **Normal branch `main.py:47-61`:**
    Build `messages = [system_prompt(build_system_prompt() with profile.md) + history]` -> `llm.chat(messages)`.
-5. **`llm.py:10-56` tool loop (max `MAX_TOOL_ROUNDS=3`):**
+5. **`app/llm.py` tool loop (max `MAX_TOOL_ROUNDS=3`):**
    `ollama.chat(..., tools=TOOL_DEFINITIONS)` -> if no `tool_calls`, fallback `_parse_text_tool_calls()` regex for models emitting JSON in text -> if none, return. Else `_run_tool_calls()` -> `asyncio.run(execute_tools_parallel())` -> append `assistant` + `role=tool` results, repeat. After max, force final `ollama.chat()` without tools.
-6. **Speak `tts.py:69-93`:** lazy singleton `Kokoro()` (`_FloatSpeedSession` for float32 speed fix), `engine.create(text, voice=af_bella, lang=en-us)` -> `sounddevice.play()+wait()` blocking.
+6. **Speak `app/tts.py`:** lazy singleton `Kokoro()` (`_FloatSpeedSession` for float32 speed fix), `engine.create(text, voice=af_bella, lang=en-us)` -> sanitized audio -> serialized `sounddevice` playback.
 7. **Reminders:** `tools/reminder.py` writes `reminder/reminders.json` (`HH:MM` normalized). `reminder/alertMe.py:36-52` matches `datetime.now("%H:%M")`, `speak(message)`, deletes fired entry.
 
-`metrics.py` tracks model calls, tool calls, input/output characters, backend, and session duration for the dashboard's AI usage panel.
+`app/metrics.py` tracks model calls, tool calls, input/output characters, backend, and session duration for the dashboard's AI usage panel.
 
 ## Setup
 
@@ -56,7 +61,7 @@ Python 3.10 or newer is required. The current `kokoro-onnx` release requires
 
 Requires Kokoro model files in project root (`kokoro-v1.0.onnx`, `voices-v1.0.bin`).
 
-## Configuration (`config.py`)
+## Configuration (`app/config.py`)
 
 - `MODEL_NAME = "llama3.1:latest"`
 - `NUM_PREDICT = 120` — short, TTS-friendly replies
@@ -74,7 +79,7 @@ Requires Kokoro model files in project root (`kokoro-v1.0.onnx`, `voices-v1.0.bi
 | `browse_url` | `searching.py` | Fetch page + extract text (SSRF-guarded) |
 | `set_reminder` / `get_reminders` / `delete_reminder` | `reminder.py` | JSON-backed reminders |
 
-System prompt (`profile.py:67-77`) defines E.V as concise, friendly, 1-2 sentences, only answers most recent message, must actually call tools instead of describing them.
+System prompt (`app/profile.py`) defines E.V as concise, friendly, 1-2 sentences, only answers most recent message, must actually call tools instead of describing them.
 
 ## Standalone reminder runner
 

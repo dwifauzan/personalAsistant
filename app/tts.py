@@ -18,7 +18,7 @@ from pathlib import Path
 import numpy as np
 import sounddevice as nacsound
 from kokoro_onnx import Kokoro
-from config import (
+from .config import (
     KOKORO_LANGUAGE,
     KOKORO_MODEL_PATH,
     KOKORO_SAMPLE_RATE,

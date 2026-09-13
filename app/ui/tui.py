@@ -9,8 +9,8 @@ import time
 from datetime import datetime
 from textwrap import wrap
 
-from config import MODEL_NAME
-from metrics import UsageSnapshot, record_input, snapshot
+from ..config import MODEL_NAME
+from ..metrics import UsageSnapshot, record_input, snapshot
 from tools.reminder import _load_reminders
 
 

@@ -4,11 +4,11 @@ import ollama
 import asyncio
 import json
 import re
-import lmstudio
-from config import MODEL_NAME, NUM_PREDICT, MAX_TOOL_ROUNDS, MAX_TOOL_CONTENT_CHARS
+from . import lmstudio
+from .config import MODEL_NAME, NUM_PREDICT, MAX_TOOL_ROUNDS, MAX_TOOL_CONTENT_CHARS
 from tools.definitions import TOOL_DEFINITIONS
 from tools.executor import execute_tools_parallel
-from metrics import record_model_call, record_output, record_tool_calls
+from .metrics import record_model_call, record_output, record_tool_calls
 
 
 def chat(messages: list[dict]) -> dict:

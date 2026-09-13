@@ -15,7 +15,7 @@ import socket
 import urllib.parse
 import urllib.request
 
-from config import (
+from .config import (
     LMSTUDIO_BASE_URL,
     LMSTUDIO_MODEL_NAME,
     LMSTUDIO_TIMEOUT,

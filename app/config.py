@@ -7,7 +7,7 @@ termasuk model AI, suara TTS, dan perilaku aplikasi.
 
 from pathlib import Path
 
-_PROJECT_ROOT = Path(__file__).parent
+_PROJECT_ROOT = Path(__file__).resolve().parents[1]
 
 MODEL_NAME = "llama3.1:latest"
 
