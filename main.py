@@ -2,7 +2,7 @@ import threading
 import time
 from profile import apply_profile_update, build_system_prompt, wants_profile_update
 from llm import chat
-from tts import speak
+from tts import should_speak, speak
 from reminder.alertMe import check_reminders
 
 history = []
@@ -54,7 +54,11 @@ try:
             ]
 
             response = chat(messages)
-            text = response["message"]["content"]
+            text = (response["message"]["content"] or "").strip()
+            if not should_speak(text):
+                # Model returned nothing (e.g. huge search context starved
+                # its output budget) - say so instead of crashing TTS.
+                text = "I found the information but couldn't form a reply. Please ask again in a simpler way."
             # print("dapet responsenya nih ", text)
             print("E.V : ", text)
             speak(text)

@@ -67,6 +67,16 @@ def _get_engine():
                 _engine.sess = _FloatSpeedSession(_engine.sess)
     return _engine
 
+def should_speak(text) -> bool:
+    """
+    Return True if text has speakable content.
+
+    Kokoro crashes with "need at least one array to concatenate" on
+    empty/whitespace input, so callers must check this first.
+    """
+    return bool(text and text.strip())
+
+
 def speak(text):
     """
     Mengubah text menjadi suara dan memutarnya melalui speaker.
@@ -81,15 +91,19 @@ def speak(text):
         - Engine diinisialisasi otomatis pada pemanggilan pertama
         - Menggunakan konfigurasi dari config.py (voice, speed, language)
         - Audio langsung diputar setelah di-generate (blocking)
+        - Empty/whitespace text is skipped silently (Kokoro crashes on it)
     """
-    with _speech_lock:
-        engine = _get_engine()
+    if not should_speak(text):
+        print("[Warning] speak() called with empty text, skipping TTS.")
+        return None
 
-        audio, sample_rate = engine.create(
-            text,
-            voice=KOKORO_VOICE,
-            speed=KOKORO_SPEED,
-            lang=KOKORO_LANGUAGE,
-        )
-        nacsound.play(audio, samplerate=sample_rate or KOKORO_SAMPLE_RATE)
-        nacsound.wait()
+    engine = _get_engine()
+
+    audio, sample_rate = engine.create(
+        text,
+        voice=KOKORO_VOICE,
+        speed=KOKORO_SPEED,
+        lang=KOKORO_LANGUAGE,
+    )
+    nacsound.play(audio, samplerate=sample_rate or KOKORO_SAMPLE_RATE)
+    nacsound.wait()

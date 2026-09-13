@@ -5,7 +5,7 @@ import asyncio
 import json
 import re
 import lmstudio
-from config import MODEL_NAME, NUM_PREDICT, MAX_TOOL_ROUNDS
+from config import MODEL_NAME, NUM_PREDICT, MAX_TOOL_ROUNDS, MAX_TOOL_CONTENT_CHARS
 from tools.definitions import TOOL_DEFINITIONS
 from tools.executor import execute_tools_parallel
 
@@ -53,9 +53,15 @@ def _chat_loop(messages: list[dict], backend: str = "ollama") -> dict:
 
         for tool_call, result in zip(tool_calls, results):
             name = tool_call["function"]["name"]
+            content = result or ""
+            if len(content) > MAX_TOOL_CONTENT_CHARS:
+                content = (
+                    content[:MAX_TOOL_CONTENT_CHARS]
+                    + f"\n...[truncated {len(result) - MAX_TOOL_CONTENT_CHARS} chars]..."
+                )
             messages.append({
                 "role": "tool",
-                "content": result,
+                "content": content,
                 "name": name,
             })
 

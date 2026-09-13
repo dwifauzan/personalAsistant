@@ -58,9 +58,9 @@ def chat(messages: list[dict], tools: list[dict] | None = None) -> dict:
         "model": LMSTUDIO_MODEL_NAME,
         "messages": _to_openai_messages(messages),
         # Cap is a safety net only; the system prompt keeps answers short.
-        # Higher than NUM_PREDICT because reasoning models spend tokens
+        # Well above NUM_PREDICT because reasoning models spend tokens
         # on hidden thinking before answering / calling tools.
-        "max_tokens": max(NUM_PREDICT, 512),
+        "max_tokens": max(NUM_PREDICT, 1024),
     }
     if tools is not None:
         payload["tools"] = tools
@@ -98,7 +98,7 @@ def generate(prompt: str) -> dict:
     data = _post("/chat/completions", {
         "model": LMSTUDIO_MODEL_NAME,
         "messages": [{"role": "user", "content": prompt}],
-        "max_tokens": max(NUM_PREDICT, 512),
+        "max_tokens": max(NUM_PREDICT, 1024),
     })
     return {"response": data["choices"][0]["message"].get("content") or ""}
 

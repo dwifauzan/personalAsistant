@@ -36,7 +36,12 @@ KOKORO_SPEED = 1.0
 KOKORO_SAMPLE_RATE = 24000
 
 # Jumlah token maksimum untuk response AI
-NUM_PREDICT = 120
+# 300 = enough room to answer after large tool context (10-site search).
+NUM_PREDICT = 300
+
+# Max chars of a single tool result kept in chat history.
+# Prevents huge search output from starving the model's answer budget.
+MAX_TOOL_CONTENT_CHARS = 3000
 
 # Apakah browser otomatis terbuka saat melakukan pencarian web
 OPEN_BROWSER = True

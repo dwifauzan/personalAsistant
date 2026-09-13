@@ -13,8 +13,9 @@ TOOL_DEFINITIONS = [
                     },
                     "max_results": {
                         "type": "integer",
-                        "description": "Maximum number of results (default 3, max 5)",
-                        "default": 3
+                        "description": "Maximum number of results (default 5, max 10)",
+                        "default": 5,
+                        "maximum": 10
                     }
                 },
                 "required": ["query"]
