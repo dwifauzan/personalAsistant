@@ -33,7 +33,7 @@ requirements.txt
 ## Flow
 
 1. **Start `main.py`:** spawn `reminder_loop()` daemon thread (`check_reminders()` every 30s), then launch the curses dashboard.
-2. **TUI input `app/ui/tui.py`:** display a live clock, active reminder times, conversation output, session AI usage, and live AI/audio status. Type a message and press Enter; use Ctrl-C or Ctrl-Q to exit. AI and reminder speech are queued through the dashboard loop to avoid concurrent CoreAudio playback.
+2. **TUI input `app/ui/tui.py`:** a Copilot-inspired terminal workspace with an open chat transcript, model/backend status, reminders and AI-usage sidebar, colored input bar, activity line, and command footer. Type a message and press Enter; use Ctrl-L to clear chat and Ctrl-C or Ctrl-Q to exit. AI/tool logs such as Ollama fallback messages are captured into the activity line instead of writing over the input bar. AI and reminder speech are queued through the dashboard loop to avoid concurrent CoreAudio playback.
 3. **Profile branch `main.py`, `app/profile.py`:**
    `wants_profile_update()` regex match (ID/EN) -> `ollama.generate()` rewrites `profile.md` (with `.bak`, sanitize, length checks) -> short reply + `speak()`.
 4. **Normal branch `main.py:47-61`:**

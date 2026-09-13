@@ -41,7 +41,6 @@ def check_reminders(speak_fn=speak):
         if reminder["time"] == current_time:
             try:
                 speak_fn(reminder["message"])
-                print(f"Reminder triggered: {reminder['message']}")
             except Exception as e:
                 print(f"[ERROR] Failed to speak reminder: {e}")
             remove_reminder(reminder["time"])
