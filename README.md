@@ -1,34 +1,8 @@
 # personalAsistant — E.V Voice Assistant
 
-CLI voice assistant named **E.V**, built on `ollama` (`llama3.1:latest`) + `Kokoro ONNX` TTS.
+CLI voice assistant named **E.V**, built on `ollama` (`llama3.1:latest`) + `Kokoro ONNX` TTS develop for lightweight and fast answers not design for complex necessary or heavy context.
 
-## Structure
-
-```
-main.py                  -> application entry point
-app/                     -> assistant application package
-  config.py              -> all settings (model, TTS voice, timeouts)
-  llm.py                 -> Ollama/LM Studio chat + tool-call loop
-  lmstudio.py            -> LM Studio HTTP fallback backend
-  metrics.py             -> session usage counters for the TUI
-  profile.py             -> long-term user memory service
-  tts.py                 -> speech generation and serialized playback
-  ui/tui.py              -> curses dashboard and input loop
-tools/                   -> LLM-callable tools
-  definitions.py         -> 7 tool schemas for Ollama
-  executor.py            -> name->handler map + asyncio.gather parallel run
-  searching.py           -> web_search (Bing scrape), news_search, browse_url (+ SSRF _validate_url)
-  searchingFinance.py    -> finance_lookup (Yahoo chart API + Google Finance fallback)
-  reminder.py            -> set/get/delete_reminder (JSON file)
-  http_client.py         -> aiohttp fetch/fetch_json with retry
-  html_utils.py          -> BeautifulSoup extract_text
-reminder/
-  alertMe.py + reminders.json -> background alerter
-profile.md               -> long-term user profile data
-kokoro-v1.0.onnx / voices-v1.0.bin -> TTS model files
-docs/TOOLS_DOCUMENTATION.md -> detailed tools docs
-requirements.txt
-```
+goals created this project about research
 
 ## Flow
 
@@ -79,8 +53,3 @@ Requires Kokoro model files in project root (`kokoro-v1.0.onnx`, `voices-v1.0.bi
 | `browse_url` | `searching.py` | Fetch page + extract text (SSRF-guarded) |
 | `set_reminder` / `get_reminders` / `delete_reminder` | `reminder.py` | JSON-backed reminders |
 
-System prompt (`app/profile.py`) defines E.V as concise, friendly, 1-2 sentences, only answers most recent message, must actually call tools instead of describing them.
-
-## Standalone reminder runner
-
-`python -m reminder.alertMe` runs the polling loop directly. Importing `check_reminders` from `main.py` no longer blocks.
