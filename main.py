@@ -15,13 +15,11 @@ def reminder_loop():
             print(f"[ERROR] Reminder check failed: {e}")
         time.sleep(30)
 
-reminder_thread = threading.Thread(target=reminder_loop, daemon=True)
-reminder_thread.start()
-print("[INFO] Reminder checker started in background.")
-
 try:
     while True:
         try:
+            reminder_loop()
+            
             user_input = input("You: ")
             
             print("ini hasil input user: ", user_input)
@@ -56,6 +54,9 @@ try:
             text = response["message"]["content"]
             # print("dapet responsenya nih ", text)
             print("E.V : ", text)
+            # reminder_thread = threading.Thread(target=reminder_loop, daemon=True)
+            # reminder_thread.start()
+            # print("[INFO] Reminder checker started in background.")
             speak(text)
 
             history.append({"role": "assistant", "content": text})
