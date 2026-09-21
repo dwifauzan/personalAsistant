@@ -5,7 +5,7 @@ from typing import Optional
 import aiohttp
 import certifi
 
-from config import FETCH_TIMEOUT, MAX_RETRIES
+from app.config import FETCH_TIMEOUT, MAX_RETRIES
 
 
 async def fetch(url: str, timeout: Optional[int] = None) -> str:

@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import asyncio
 import html
 import ipaddress
@@ -11,7 +13,7 @@ warnings.filterwarnings("ignore", category=XMLParsedAsHTMLWarning)
 
 from tools.http_client import fetch
 from tools.html_utils import extract_text
-from config import MAX_CONCURRENT_FETCHES
+from app.config import MAX_CONCURRENT_FETCHES
 
 
 async def _extract_search_results_bing(query: str, max_results: int = 5) -> list[dict]:
@@ -104,20 +106,43 @@ async def _fetch_pages_parallel(results: list[dict], max_chars: int = 5000) -> l
     return await asyncio.gather(*tasks)
 
 
-async def web_search_handler(query: str, max_results: int | str = 3) -> str:
-    max_results = int(max_results)
+# Absolute cap so an LLM asking for 50 sites can't starve its own
+# output budget and return empty text (which crashes TTS).
+MAX_WEB_RESULTS = 10
+# Total char budget across all fetched pages (~15k chars).
+TOTAL_CONTENT_BUDGET = 15000
+
+
+def _resolve_search_limits(max_results: int | str) -> tuple[int, int]:
+    """Return (count, per_page_chars) with count clamped to 1..10.
+
+    Fetching more sites means fewer chars per site so the combined
+    context stays within TOTAL_CONTENT_BUDGET.
+    """
+    try:
+        count = int(max_results)
+    except (TypeError, ValueError):
+        count = 3
+    count = max(1, min(count, MAX_WEB_RESULTS))
+    per_page = TOTAL_CONTENT_BUDGET // count
+    return count, per_page
+
+
+async def web_search_handler(query: str, max_results: int | str = 5) -> str:
+    count, per_page = _resolve_search_limits(max_results)
     print(f"[web_search] Searching Bing for: {query}")
-    results = await _extract_search_results_bing(query, max_results=max_results * 2)
+    results = await _extract_search_results_bing(query, max_results=count * 2)
 
     if not results:
         print("[web_search] No results found")
         return "No search results found."
 
-    print(f"[web_search] Found {len(results)} results, fetching top {min(max_results, len(results))} pages")
-    page_texts = await _fetch_pages_parallel(results[:max_results])
+    trimmed = results[:count]
+    print(f"[web_search] Found {len(results)} results, fetching top {len(trimmed)} pages ({per_page} chars each)")
+    page_texts = await _fetch_pages_parallel(trimmed, max_chars=per_page)
 
     parts = []
-    for i, (result, text) in enumerate(zip(results[:max_results], page_texts), 1):
+    for i, (result, text) in enumerate(zip(trimmed, page_texts), 1):
         if text:
             print(f"[web_search] Source {i}: {result['title'][:50]}...")
             parts.append(
