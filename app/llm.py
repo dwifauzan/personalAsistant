@@ -5,7 +5,7 @@ import asyncio
 import json
 import re
 from . import lmstudio
-from .config import MODEL_NAME, NUM_PREDICT, MAX_TOOL_ROUNDS, MAX_TOOL_CONTENT_CHARS
+from .config import MODEL_NAME, NUM_PREDICT, NUM_CTX, NUM_GPU, MAX_TOOL_ROUNDS, MAX_TOOL_CONTENT_CHARS
 from tools.definitions import TOOL_DEFINITIONS
 from tools.executor import execute_tools_parallel
 from .metrics import record_model_call, record_output, record_tool_calls
@@ -84,11 +84,11 @@ def _backend_chat(messages: list[dict], backend: str, with_tools: bool) -> dict:
     kwargs = {
         "model": MODEL_NAME,
         "messages": messages,
-        "options": {"num_predict": NUM_PREDICT},
+        "options": {"num_predict": NUM_PREDICT, "num_ctx": NUM_CTX, "num_gpu": NUM_GPU},
     }
     if with_tools:
         kwargs["tools"] = TOOL_DEFINITIONS
-    response = ollama.chat(**kwargs)
+    response = ollama.chat(**kwargs, keep_alive="1m")
     record_output(len(response["message"].get("content", "")))
     return response
 

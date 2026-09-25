@@ -9,7 +9,7 @@ from pathlib import Path
 
 _PROJECT_ROOT = Path(__file__).parent
 
-MODEL_NAME = "llama3.1:latest"
+MODEL_NAME = "qwen3.5:9b"
 
 KOKORO_MODEL_PATH = str(_PROJECT_ROOT / "kokoro-v1.0.onnx")
 

@@ -18,7 +18,6 @@ LMSTUDIO_MODEL_NAME = "google/gemma-4-e4b"
 LMSTUDIO_TIMEOUT = 120
 
 KOKORO_MODEL_PATH = str(_PROJECT_ROOT / "kokoro-v1.0.onnx")
-
 KOKORO_VOICES_PATH = str(_PROJECT_ROOT / "voices-v1.0.bin")
 
 # Bahasa untuk TTS (en-us = English US, id-id = Indonesian)
@@ -35,9 +34,16 @@ KOKORO_SPEED = 1.0
 # Sample rate audio output (Hz)
 KOKORO_SAMPLE_RATE = 24000
 
+# Temporarily disable text-to-speech playback.
+TTS_ENABLED = False
+
 # Jumlah token maksimum untuk response AI
 # 300 = enough room to answer after large tool context (10-site search).
 NUM_PREDICT = 300
+
+NUM_CTX = 2048
+
+NUM_GPU = 10
 
 # Max chars of a single tool result kept in chat history.
 # Prevents huge search output from starving the model's answer budget.

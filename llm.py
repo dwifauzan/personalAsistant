@@ -88,7 +88,7 @@ def _run_tool_calls(tool_calls: list[dict]) -> list[str]:
             "name": tc["function"]["name"],
             "arguments": tc["function"].get("arguments", {}),
         }
-        for tc in tool_calls
+        for tc in  tool_calls
     ]
 
     return asyncio.run(execute_tools_parallel(calls))

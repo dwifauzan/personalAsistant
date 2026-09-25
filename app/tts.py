@@ -25,6 +25,7 @@ from .config import (
     KOKORO_SPEED,
     KOKORO_VOICE,
     KOKORO_VOICES_PATH,
+    TTS_ENABLED,
 )
 
 _engine = None
@@ -122,6 +123,8 @@ def speak(text):
         - Audio langsung diputar setelah di-generate (blocking)
         - Empty/whitespace text is skipped silently (Kokoro crashes on it)
     """
+    if not TTS_ENABLED:
+        return None
     if not should_speak(text):
         print("[Warning] speak() called with empty text, skipping TTS.")
         return None
